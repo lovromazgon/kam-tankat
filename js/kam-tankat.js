@@ -1,4 +1,6 @@
+var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
 var CROSSINGS_LIMIT = 3;
+var CROSSING_RADIUS = 2000;
 var autocomplete, directionsService, directionsDisplay, map, inputAddress;
 borderCrossings = [
     {
@@ -84,14 +86,40 @@ function initialize() {
 function findNearestFuelStations(place) {
     findNearestCrossings(place, function(nearestCrossings) {
         console.log(nearestCrossings);
-        directionsDisplay.setDirections(nearestCrossings[0].directions);
+        crossing = nearestCrossings[0];
+        directionsDisplay.setDirections(crossing.directions);
+        if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
+            xmlhttp = new XMLHttpRequest();
+        }
+        else {// code for IE6, IE5
+            xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        xmlhttp.onreadystatechange = function() {
+            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                console.log("SUCCESS");
+                console.log(xmlhttp);
+                var result = JSON.parse(xmlhttp.responseText);
+                console.log(result);
+            }
+            else {
+                console.log(xmlhttp);
+                console.log(xmlhttp.readyState);
+                console.log(xmlhttp.status);
+                console.log(xmlhttp.responseText);
+            }
+        }
+        xmlhttp.open("POST", FUEL_PRICE_AUT_URL, true);
+        xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+        xmlhttp.send('checked="checked"&fuel="DIE"&lat1=46.637933883528746&lat2=46.804571650924586&lng1=15.373992919921875&lng2=15.8367919921875');
     });
 }
 
 function findNearestCrossings(place, callback) {
     nearestCrossings = [];
     for (key in borderCrossings) {
-        nearestCrossings.push({key: key,
+        nearestCrossings.push({key : key,
+                        name : borderCrossings[key].name,
+                        location : borderCrossings[key].location,
                         coordDistance : calculateCoordDistance(borderCrossings[key].location, place.geometry.location)
         });
     }
