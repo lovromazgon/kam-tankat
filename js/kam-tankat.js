@@ -1,6 +1,6 @@
 var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
 var CROSSINGS_LIMIT = 3;
-var CROSSING_RADIUS = 2000;
+var FUEL_STATION_RADIUS = 4000;
 var autocomplete, directionsService, directionsDisplay, map, inputAddress;
 borderCrossings = [
     {
@@ -101,17 +101,40 @@ function findNearestFuelStations(place) {
                 var result = JSON.parse(xmlhttp.responseText);
                 console.log(result);
             }
-            else {
-                console.log(xmlhttp);
-                console.log(xmlhttp.readyState);
-                console.log(xmlhttp.status);
+            else if (xmlhttp.readyState == 4) {
                 console.log(xmlhttp.responseText);
+                alert("Sorči, prišlo je do napake..");
             }
         }
         xmlhttp.open("POST", FUEL_PRICE_AUT_URL, true);
         xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-        xmlhttp.send('checked="checked"&fuel="DIE"&lat1=46.637933883528746&lat2=46.804571650924586&lng1=15.373992919921875&lng2=15.8367919921875');
+        queryString = getQueryString(crossing.location);
+        console.log(queryString);
+        xmlhttp.send(queryString);
     });
+}
+
+function getQueryString(location) {
+    checked = '"checked"';
+    fuel = '"DIE"';
+    circleBounds = new google.maps.Circle({center: location, radius: FUEL_STATION_RADIUS, map: map}).getBounds();
+    northEast = circleBounds.getNorthEast();
+    southWest = circleBounds.getSouthWest();
+    return encodeQueryData({
+        checked: checked,
+        fuel: fuel,
+        lat1: northEast.lat(),
+        lng1: northEast.lng(),
+        lat2: southWest.lat(),
+        lng2: southWest.lng()
+        });
+}
+
+function encodeQueryData(data) {
+    var ret = [];
+    for (var d in data)
+        ret.push(encodeURIComponent(d) + "=" + encodeURIComponent(data[d]));
+    return ret.join("&");
 }
 
 function findNearestCrossings(place, callback) {
