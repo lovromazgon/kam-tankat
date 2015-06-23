@@ -137,12 +137,11 @@ var Util = (function () {
 // ** CALLBACKS **
 // ***************
 // just because JavaScript is actually not that good in object oriented programming, d00h
-function saveFuelStationsCallback(response) {
-    kamTankat.saveFuelStations(response);
+function kamTankat2Callback(response) {
+    kamTankat._kamTankat2(response);
 }
-
-function findFuelStationsCallback(response) {
-    kamTankat.findFuelStations(response);
+function kamTankat3Callback(response) {
+    kamTankat._kamTankat3(response);
 }
 
 // ***********************
@@ -263,37 +262,43 @@ var KamTankat = (function () {
     }, {
         key: "kamTankat",
         value: function kamTankat() {
+            //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
+            this._kamTankat1();
+        }
+    }, {
+        key: "_kamTankat1",
+        value: function _kamTankat1() {
             this.findNearestCrossings();
-            this.calculateDistancesAndDurations(findFuelStationsCallback);
-            //when the method finishes it calls findFuelStations();
+            this.calculateDistanceAndDurationToNearestCrossings(kamTankat2Callback);
         }
     }, {
-        key: "findFuelStations",
-        value: function findFuelStations() {
-            console.log(this.nearestCrossings);
-            var crossing = this.nearestCrossings[0];
-
-            var queryString = Util.createAUTQueryString(crossing.crossing.location, this.fuelStationRadius);
-            Util.loadJSON({
-                method: "POST",
-                url: FUEL_PRICE_AUT_URL,
-                headers: [{ title: "Content-type", content: "application/x-www-form-urlencoded" }],
-                query: queryString
-            }, saveFuelStationsCallback);
+        key: "_kamTankat2",
+        value: function _kamTankat2() {
+            this.findFuelStations(kamTankat3Callback);
         }
     }, {
-        key: "saveFuelStations",
-        value: function saveFuelStations(fuelStationsResponse) {
-            this.fuelStations = [];
+        key: "_kamTankat3",
+        value: function _kamTankat3(response) {
+            this.saveFuelStations(response);
+            this.displayFuelStations();
+            this.displayRouteToNearestFuelStation();
+        }
+    }, {
+        key: "findNearestCrossings",
+        value: function findNearestCrossings() {
+            this.nearestCrossings = [];
             var _iteratorNormalCompletion2 = true;
             var _didIteratorError2 = false;
             var _iteratorError2 = undefined;
 
             try {
-                for (var _iterator2 = fuelStationsResponse[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    var fs = _step2.value;
+                for (var _iterator2 = this.crossings[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                    var c = _step2.value;
 
-                    this.fuelStations.push(new FuelStation(fs));
+                    this.nearestCrossings.push({
+                        crossing: c,
+                        coordDistance: c.calculateCoordDistance(this.startPlace.geometry.location)
+                    });
                 }
             } catch (err) {
                 _didIteratorError2 = true;
@@ -310,26 +315,75 @@ var KamTankat = (function () {
                 }
             }
 
-            this.displayFuelStations();
-            this.displayRouteToNearestFuelStation();
+            this.nearestCrossings.sort(function (a, b) {
+                return a.coordDistance - b.coordDistance;
+            });
         }
     }, {
-        key: "displayFuelStations",
-        value: function displayFuelStations() {
+        key: "calculateDistanceAndDurationToNearestCrossings",
+        value: function calculateDistanceAndDurationToNearestCrossings(callback, i) {
+            if (!i) {
+                i = 0;
+            }
+            if (!this.nearestCrossings[i] || i >= this.crossingsLimit) {
+                this.nearestCrossings.sort(function (a, b) {
+                    if (!a.duration && !b.duration) {
+                        return 0;
+                    } else if (!a.duration) {
+                        return 1;
+                    } else if (!b.duration) {
+                        return -1;
+                    }
+                    return a.duration.value - b.duration.value;
+                });
+                callback();
+                return;
+            }
+
+            console.log(this.nearestCrossings[i]);
+            var request = {
+                origin: this.startPlace.geometry.location,
+                destination: this.nearestCrossings[i].crossing.location,
+                travelMode: google.maps.TravelMode.DRIVING
+            };
+
+            this.directionsService.route(request, function (response, status) {
+                if (status == google.maps.DirectionsStatus.OK) {
+                    kamTankat.nearestCrossings[i].distance = response.routes[0].legs[0].distance;
+                    kamTankat.nearestCrossings[i].duration = response.routes[0].legs[0].duration;
+                    kamTankat.nearestCrossings[i].directions = response;
+                } else {
+                    console.log(status);
+                }
+                kamTankat.calculateDistanceAndDurationToNearestCrossings(callback, i + 1);
+            });
+        }
+    }, {
+        key: "findFuelStations",
+        value: function findFuelStations(callback) {
+            console.log(this.nearestCrossings);
+
+            var queryString = Util.createAUTQueryString(this.nearestCrossings[0].crossing.location, this.fuelStationRadius);
+            Util.loadJSON({
+                method: "POST",
+                url: FUEL_PRICE_AUT_URL,
+                headers: [{ title: "Content-type", content: "application/x-www-form-urlencoded" }],
+                query: queryString
+            }, callback);
+        }
+    }, {
+        key: "saveFuelStations",
+        value: function saveFuelStations(fuelStationsResponse) {
+            this.fuelStations = [];
             var _iteratorNormalCompletion3 = true;
             var _didIteratorError3 = false;
             var _iteratorError3 = undefined;
 
             try {
-                for (var _iterator3 = this.fuelStations[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                for (var _iterator3 = fuelStationsResponse[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
                     var fs = _step3.value;
 
-                    console.log(fs);
-                    new google.maps.Marker({
-                        title: fs.name,
-                        position: fs.location,
-                        map: this.map
-                    });
+                    this.fuelStations.push(new FuelStation(fs));
                 }
             } catch (err) {
                 _didIteratorError3 = true;
@@ -342,6 +396,39 @@ var KamTankat = (function () {
                 } finally {
                     if (_didIteratorError3) {
                         throw _iteratorError3;
+                    }
+                }
+            }
+        }
+    }, {
+        key: "displayFuelStations",
+        value: function displayFuelStations() {
+            var _iteratorNormalCompletion4 = true;
+            var _didIteratorError4 = false;
+            var _iteratorError4 = undefined;
+
+            try {
+                for (var _iterator4 = this.fuelStations[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                    var fs = _step4.value;
+
+                    console.log(fs);
+                    new google.maps.Marker({
+                        title: fs.name,
+                        position: fs.location,
+                        map: this.map
+                    });
+                }
+            } catch (err) {
+                _didIteratorError4 = true;
+                _iteratorError4 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion4 && _iterator4["return"]) {
+                        _iterator4["return"]();
+                    }
+                } finally {
+                    if (_didIteratorError4) {
+                        throw _iteratorError4;
                     }
                 }
             }
@@ -361,81 +448,6 @@ var KamTankat = (function () {
                 } else {
                     console.log(status);
                 }
-            });
-        }
-    }, {
-        key: "findNearestCrossings",
-        value: function findNearestCrossings() {
-            this.nearestCrossings = [];
-            var _iteratorNormalCompletion4 = true;
-            var _didIteratorError4 = false;
-            var _iteratorError4 = undefined;
-
-            try {
-                for (var _iterator4 = this.crossings[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
-                    var c = _step4.value;
-
-                    this.nearestCrossings.push({
-                        crossing: c,
-                        coordDistance: c.calculateCoordDistance(this.startPlace.geometry.location)
-                    });
-                }
-            } catch (err) {
-                _didIteratorError4 = true;
-                _iteratorError4 = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion4 && _iterator4["return"]) {
-                        _iterator4["return"]();
-                    }
-                } finally {
-                    if (_didIteratorError4) {
-                        throw _iteratorError4;
-                    }
-                }
-            }
-
-            this.nearestCrossings.sort(function (a, b) {
-                return a.coordDistance - b.coordDistance;
-            });
-        }
-    }, {
-        key: "calculateDistancesAndDurations",
-        value: function calculateDistancesAndDurations(callback, i) {
-            if (!i) {
-                i = 0;
-            }
-            if (!this.nearestCrossings[i] || i >= this.crossingsLimit) {
-                this.nearestCrossings.sort(function (a, b) {
-                    if (!a.duration && !b.duration) {
-                        return 0;
-                    } else if (!a.duration) {
-                        return 1;
-                    } else if (!b.duration) {
-                        return -1;
-                    }
-                    return a.duration.value - b.duration.value;
-                });
-                callback();
-                return;
-            }
-            console.log(i);
-            console.log(this.nearestCrossings[i]);
-            var request = {
-                origin: this.startPlace.geometry.location,
-                destination: this.nearestCrossings[i].crossing.location,
-                travelMode: google.maps.TravelMode.DRIVING
-            };
-
-            this.directionsService.route(request, function (response, status) {
-                if (status == google.maps.DirectionsStatus.OK) {
-                    kamTankat.nearestCrossings[i].distance = response.routes[0].legs[0].distance;
-                    kamTankat.nearestCrossings[i].duration = response.routes[0].legs[0].duration;
-                    kamTankat.nearestCrossings[i].directions = response;
-                } else {
-                    console.log(status);
-                }
-                kamTankat.calculateDistancesAndDurations(callback, i + 1);
             });
         }
     }]);

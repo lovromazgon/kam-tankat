@@ -94,12 +94,11 @@ class Util {
 // ** CALLBACKS **
 // ***************
 // just because JavaScript is actually not that good in object oriented programming, d00h
-function saveFuelStationsCallback(response) {
-    kamTankat.saveFuelStations(response);
+function kamTankat2Callback(response) {
+    kamTankat._kamTankat2(response);
 }
-
-function findFuelStationsCallback(response) {
-    kamTankat.findFuelStations(response);
+function kamTankat3Callback(response) {
+    kamTankat._kamTankat3(response);
 }
 
 // ***********************
@@ -178,22 +177,87 @@ class KamTankat {
     }
 
     kamTankat() {
-        this.findNearestCrossings();
-        this.calculateDistancesAndDurations(findFuelStationsCallback);
-        //when the method finishes it calls findFuelStations();
+        //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
+        this._kamTankat1();
     }
 
-    findFuelStations() {
-        console.log(this.nearestCrossings);
-        var crossing = this.nearestCrossings[0];
+    _kamTankat1() {
+        this.findNearestCrossings();
+        this.calculateDistanceAndDurationToNearestCrossings(kamTankat2Callback);
+    }
+    _kamTankat2() {
+        this.findFuelStations(kamTankat3Callback);
+    }
+    _kamTankat3(response) {
+        this.saveFuelStations(response);
+        this.displayFuelStations();
+        this.displayRouteToNearestFuelStation();
+    }
 
-        var queryString = Util.createAUTQueryString(crossing.crossing.location, this.fuelStationRadius);
+    findNearestCrossings() {
+        this.nearestCrossings = [];
+        for (var c of this.crossings) {
+            this.nearestCrossings.push({
+                crossing : c,
+                coordDistance : c.calculateCoordDistance(this.startPlace.geometry.location)
+            });
+        }
+        this.nearestCrossings.sort(function(a,b) {
+            return a.coordDistance - b.coordDistance;
+        });
+    }
+
+    calculateDistanceAndDurationToNearestCrossings(callback, i) {
+        if (!i) {
+            i = 0;
+        }
+        if (!this.nearestCrossings[i] || i >= this.crossingsLimit) {
+            this.nearestCrossings.sort(function(a,b) {
+                if (!a.duration && !b.duration) {
+                    return 0;
+                }
+                else if (!a.duration) {
+                    return 1;
+                }
+                else if (!b.duration) {
+                    return -1;
+                }
+                return a.duration.value - b.duration.value;
+            });
+            callback();
+            return;
+        }
+
+        console.log(this.nearestCrossings[i]);
+        var request = {
+            origin: this.startPlace.geometry.location,
+            destination: this.nearestCrossings[i].crossing.location,
+            travelMode: google.maps.TravelMode.DRIVING
+        };
+
+        this.directionsService.route(request, function(response, status) {
+            if (status == google.maps.DirectionsStatus.OK) {
+                kamTankat.nearestCrossings[i].distance = response.routes[0].legs[0].distance;
+                kamTankat.nearestCrossings[i].duration = response.routes[0].legs[0].duration;
+                kamTankat.nearestCrossings[i].directions = response;
+            }
+            else {
+                console.log(status);
+            }
+            kamTankat.calculateDistanceAndDurationToNearestCrossings(callback, i+1);
+        });
+    }
+
+    findFuelStations(callback) {
+        console.log(this.nearestCrossings);
+
+        var queryString = Util.createAUTQueryString(this.nearestCrossings[0].crossing.location, this.fuelStationRadius);
         Util.loadJSON({
             method: 'POST',
             url:FUEL_PRICE_AUT_URL,
             headers: [{title:'Content-type', content:'application/x-www-form-urlencoded'}],
             query: queryString
-            }, saveFuelStationsCallback
+            }, callback
         );
     }
 
@@ -202,8 +266,6 @@ class KamTankat {
         for (var fs of fuelStationsResponse) {
             this.fuelStations.push(new FuelStation(fs));
         }
-        this.displayFuelStations();
-        this.displayRouteToNearestFuelStation();
     }
 
     displayFuelStations() {
@@ -231,60 +293,6 @@ class KamTankat {
             else {
                 console.log(status);
             }
-        });
-    }
-
-    findNearestCrossings() {
-        this.nearestCrossings = [];
-        for (var c of this.crossings) {
-            this.nearestCrossings.push({
-                crossing : c,
-                coordDistance : c.calculateCoordDistance(this.startPlace.geometry.location)
-            });
-        }
-        this.nearestCrossings.sort(function(a,b) {
-            return a.coordDistance - b.coordDistance;
-        });
-    }
-
-    calculateDistancesAndDurations(callback, i) {
-        if (!i) {
-            i = 0;
-        }
-        if (!this.nearestCrossings[i] || i >= this.crossingsLimit) {
-            this.nearestCrossings.sort(function(a,b) {
-                if (!a.duration && !b.duration) {
-                    return 0;
-                }
-                else if (!a.duration) {
-                    return 1;
-                }
-                else if (!b.duration) {
-                    return -1;
-                }
-                return a.duration.value - b.duration.value;
-            });
-            callback();
-            return;
-        }
-        console.log(i);
-        console.log(this.nearestCrossings[i]);
-        var request = {
-            origin: this.startPlace.geometry.location,
-            destination: this.nearestCrossings[i].crossing.location,
-            travelMode: google.maps.TravelMode.DRIVING
-        };
-
-        this.directionsService.route(request, function(response, status) {
-            if (status == google.maps.DirectionsStatus.OK) {
-                kamTankat.nearestCrossings[i].distance = response.routes[0].legs[0].distance;
-                kamTankat.nearestCrossings[i].duration = response.routes[0].legs[0].duration;
-                kamTankat.nearestCrossings[i].directions = response;
-            }
-            else {
-                console.log(status);
-            }
-            kamTankat.calculateDistancesAndDurations(callback, i+1);
         });
     }
 }
