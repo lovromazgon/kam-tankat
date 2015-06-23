@@ -1,65 +1,42 @@
 var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
 var CROSSINGS_LIMIT = 3;
-var FUEL_STATION_RADIUS = 4000;
-var autocomplete, directionsService, directionsDisplay, map, inputAddress;
-borderCrossings = [
-    {
-        name:"Korensko sedlo",
-        location: new google.maps.LatLng(46.51773060441385,13.751593083143234)
-    },
-    {
-        name:"Karavanke",
-        location: new google.maps.LatLng(46.48136758200522,14.00758981704712)
-    },
-    {
-        name:"Ljubelj",
-        location: new google.maps.LatLng(46.437481294769356,14.254932403564453)
-    },
-    {
-        name:"Jezersko",
-        location: new google.maps.LatLng(46.419126964638565,14.527037143707275)
-    },
-    {
-        name:"Holmec",
-        location: new google.maps.LatLng(46.56750224126688,14.839066565036774)
-    },
-    {
-        name:"Vič",
-        location: new google.maps.LatLng(46.604669868501205,14.985136985778809)
-    },
-    {
-        name:"Radelj",
-        location: new google.maps.LatLng(46.64506895743895,15.206556022167206)
-    },
-    {
-        name:"Jurij",
-        location: new google.maps.LatLng(46.647870726812364,15.5515256524086)
-    },
-    {
-        name:"Šentilj (novi - avtocesta)",
-        location: new google.maps.LatLng(46.6907994052945,15.645303726196289)
-    },
-    {
-        name:"Trate",
-        location: new google.maps.LatLng(46.7070204237029,15.7853364944458)
-    },
-    {
-        name:"Gornja Radgona",
-        location: new google.maps.LatLng(46.68378702211667,15.987145900726318)
-    },
-    {
-        name:"Gederovci",
-        location: new google.maps.LatLng(46.67906890102226,16.040736436843872)
-    },
-    {
-        name:"Kuzma",
-        location: new google.maps.LatLng(46.83932215058491,16.056778728961945)
+var FUEL_STATION_RADIUS = 8000;
+var autocomplete, directionsService, directionsDisplay, map, inputAddress, borderCrossings;
+
+loadJSON("js/crossings.json", function(crossings) {
+    borderCrossings = crossings;
+    for (c of borderCrossings) {
+        c.location = new google.maps.LatLng(c.lat, c.lng);
     }
-];
+    console.log(borderCrossings);
+});
 sloveniaBounds = new google.maps.LatLngBounds(
     new google.maps.LatLng(45.4216739,16.596685699999966),
     new google.maps.LatLng(46.876659,13.375335500000006)
 );
+
+function loadJSON(file, callback) {
+    var request;
+    if (window.XMLHttpRequest) {
+        // IE7+, Firefox, Chrome, Opera, Safari
+        request = new XMLHttpRequest();
+    } else {
+        // code for IE6, IE5
+        request = new ActiveXObject('Microsoft.XMLHTTP');
+    }
+    // load
+    request.onreadystatechange = function() {
+        if (request.readyState == 4 && request.status == 200) {
+            callback(JSON.parse(request.responseText));
+        }
+        else if (request.readyState == 4) {
+            console.log(request.responseText);
+            alert("Sorči, prišlo je do napake..");
+        }
+    }
+    request.open('GET', file, true);
+    request.send();
+}
 
 function initialize() {
     var mapOptions = {
@@ -87,7 +64,7 @@ function findNearestFuelStations(place) {
     findNearestCrossings(place, function(nearestCrossings) {
         console.log(nearestCrossings);
         crossing = nearestCrossings[0];
-        directionsDisplay.setDirections(crossing.directions);
+        //directionsDisplay.setDirections(crossing.directions);
         if (window.XMLHttpRequest) {// code for IE7+, Firefox, Chrome, Opera, Safari
             xmlhttp = new XMLHttpRequest();
         }
@@ -96,10 +73,10 @@ function findNearestFuelStations(place) {
         }
         xmlhttp.onreadystatechange = function() {
             if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-                console.log("SUCCESS");
-                console.log(xmlhttp);
+                console.log("Got AUT fuel station prices.");
                 var result = JSON.parse(xmlhttp.responseText);
-                console.log(result);
+                displayFuelStations(result);
+                displayRoute(place.geometry.location, new google.maps.LatLng(result[0].latitude, result[0].longitude));
             }
             else if (xmlhttp.readyState == 4) {
                 console.log(xmlhttp.responseText);
@@ -117,7 +94,7 @@ function findNearestFuelStations(place) {
 function getQueryString(location) {
     checked = '"checked"';
     fuel = '"DIE"';
-    circleBounds = new google.maps.Circle({center: location, radius: FUEL_STATION_RADIUS, map: map}).getBounds();
+    circleBounds = new google.maps.Circle({center: location, radius: FUEL_STATION_RADIUS}).getBounds();
     northEast = circleBounds.getNorthEast();
     southWest = circleBounds.getSouthWest();
     return encodeQueryData({
@@ -128,6 +105,35 @@ function getQueryString(location) {
         lat2: southWest.lat(),
         lng2: southWest.lng()
         });
+}
+
+function displayFuelStations(fuelStations) {
+    console.log(fuelStations);
+    for (fs of fuelStations) {
+        console.log(fs);
+        new google.maps.Marker({
+            title: fs.gasStationName,
+            position: new google.maps.LatLng(fs.latitude, fs.longitude),
+            map: map
+        });
+    }
+}
+
+function displayRoute(origin, end) {
+    var request = {
+        origin: origin,
+        destination: end,
+        travelMode: google.maps.TravelMode.DRIVING
+    };
+
+    directionsService.route(request, function(response, status) {
+        if (status == google.maps.DirectionsStatus.OK) {
+            directionsDisplay.setDirections(response);
+        }
+        else {
+            console.log(status);
+        }
+    });
 }
 
 function encodeQueryData(data) {
@@ -161,8 +167,6 @@ function calculateDistancesAndDurations(origin, crossings, callback, i) {
     if (!i) {
         i = 0;
     }
-    console.log(i);
-    console.log(crossings[i]);
     if (!crossings[i] || i >= CROSSINGS_LIMIT) {
         crossings.sort(function(a,b) {
             if (!a.duration && !b.duration) {
@@ -179,6 +183,8 @@ function calculateDistancesAndDurations(origin, crossings, callback, i) {
         callback(crossings);
         return;
     }
+    console.log(i);
+    console.log(crossings[i]);
     var request = {
         origin: origin,
         destination: borderCrossings[crossings[i].key].location,
