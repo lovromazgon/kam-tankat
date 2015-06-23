@@ -1,4 +1,6 @@
 {
+    "crossingsLimit":3,
+    "fuelStationRadius":4000,
     "mapOptions":{
         "center":{
             "lat":46.051241,

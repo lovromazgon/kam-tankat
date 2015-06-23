@@ -1,6 +1,4 @@
 var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
-var DEFAULT_CROSSINGS_LIMIT = 3;
-var DEFAULT_FUEL_STATION_RADIUS = 8000;
 
 var kamTankat;
 
@@ -75,6 +73,7 @@ class Util {
         google.maps.event.addListener(autocomplete, 'place_changed', function() {
             var place = autocomplete.getPlace();
             if (place.geometry) {
+                kamTankat.reset();
                 kamTankat.setStartPlace(place);
                 kamTankat.kamTankat();
             } else {
@@ -135,6 +134,17 @@ class FuelStation extends Location {
         this.open = initData.open;
         this.postalCode = initData.postalCode;
     }
+
+    setMarker(marker) {
+        this.marker = marker;
+    }
+
+    removeMarker() {
+        if (this.marker) {
+            this.marker.setMap(undefined);
+            this.marker = undefined;
+        }
+    }
 }
 
 class FuelPrice {
@@ -175,6 +185,16 @@ class KamTankat {
         }
         return true;
     }
+    reset() {
+        if (this.fuelStations) {
+            for(var fs of this.fuelStations) {
+                fs.removeMarker();
+            }
+        }
+        this.nearestCrossings = undefined;
+        this.fuelStations = undefined;
+        this.startPlace = undefined;
+    }
 
     kamTankat() {
         //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
@@ -191,7 +211,8 @@ class KamTankat {
     _kamTankat3(response) {
         this.saveFuelStations(response);
         this.displayFuelStations();
-        this.displayRouteToNearestFuelStation();
+        this.findBestFuelStation();
+        this.displayRouteToBestFuelStation();
     }
 
     findNearestCrossings() {
@@ -269,17 +290,22 @@ class KamTankat {
     }
 
     displayFuelStations() {
+        //TODO create nicer marks, which display some information about fuel stations
         for (var fs of this.fuelStations) {
             console.log(fs);
-            new google.maps.Marker({
+            fs.setMarker(new google.maps.Marker({
                 title: fs.name,
                 position: fs.location,
                 map: this.map
-            });
+            }));
         }
     }
 
-    displayRouteToNearestFuelStation() {
+    findBestFuelStation() {
+        //TODO sort fuel stations so that the best is on top
+    }
+
+    displayRouteToBestFuelStation() {
         var request = {
             origin: this.startPlace.geometry.location,
             destination: this.fuelStations[0].location,
@@ -301,10 +327,10 @@ class KamTankat {
 // ** MAIN FUNCTION **
 // *******************
 (function main(){
-    kamTankat = new KamTankat(DEFAULT_CROSSINGS_LIMIT, DEFAULT_FUEL_STATION_RADIUS);
     Util.loadJSON({method:"GET", url:"js/options.json"}, function(options) {
         Util.options = options;
 
+        kamTankat = new KamTankat(options.crossingsLimit, options.fuelStationRadius);
         google.maps.event.addDomListener(window, 'load', Util.googleMapsInit);
         var crossings = [];
         for (var c of options.crossings) {

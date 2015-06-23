@@ -1,0 +1,17 @@
+/* background pattern credits go to Atle Mo: http://subtlepatterns.com/congruent-pentagon/ */
+html, body { height: 100%; margin: 0; padding: 0; background:url('pattern.png');}
+.container { display: table; height: 100%; background-color:rgba(255, 255, 255, 0.65); }
+.content { display: table-row; height: 100%; }
+.content-body { display: table-cell; }
+
+#map-canvas {
+    height: 70%;
+    -webkit-border-radius: 15px;
+    -moz-border-radius: 15px;
+    border-radius: 15px;
+    border:2px solid gray;
+}
+
+.user-input {
+    margin: 20px 0;
+}

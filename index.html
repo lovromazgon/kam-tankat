@@ -2,16 +2,36 @@
 <html>
 <head>
     <meta charset="UTF-8"> 
-    <style type="text/css">
-      html, body, #map-canvas { height: 100%; margin: 0; padding: 0;}
-    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css">
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places"></script>
     <script src="js/kam-tankat.js"></script>
 </head>
 <body>
-    <h1>Kam tankat?!</h1>
-    Naslov: <input type="text" id="address" />
-
-    <div id="map-canvas"></div>
+    <div class="container col-sm-10 col-sm-offset-1">
+        <section class="content">
+            <div class="content-body">
+                <h1>Kam tankat?!</h1>
+                <p>
+                V vnosna polja vnesi <u>izhodiščno točko</u>, <u>povprečno porabo</u> avtomobila in <u>velikost tanka</u>, aplikacija pa ti bo povedala, ali se ti splača it tankat v Avstrijo in prikazala pot do bencinske črpalke, s katero boš prihranil kar največji znesek.
+                </p>
+                <div class="user-input">
+                    <div class="form-group col-sm-4">
+                        <label for="address">Naslov:</label>
+                        <input class="form-control" type="text" id="address" />
+                    </div>
+                    <div class="form-group col-sm-4">
+                        <label for="fuel-efficiency">Povprečna poraba:</label>
+                        <input class="form-control" type="range" id="fuel-efficiency" />
+                    </div>
+                    <div class="form-group col-sm-4">
+                        <label for="tank-capacity">Kapaciteta tanka:</label>
+                        <input class="form-control" type="range" id="tank-capacity" />
+                    </div>
+                </div>
+                <div id="map-canvas"></div>
+            </div>
+        <section>
+    </div>
 <body>
 </html>

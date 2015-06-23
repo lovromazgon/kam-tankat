@@ -9,8 +9,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
-var DEFAULT_CROSSINGS_LIMIT = 3;
-var DEFAULT_FUEL_STATION_RADIUS = 8000;
 
 var kamTankat;
 
@@ -115,6 +113,7 @@ var Util = (function () {
             google.maps.event.addListener(autocomplete, "place_changed", function () {
                 var place = autocomplete.getPlace();
                 if (place.geometry) {
+                    kamTankat.reset();
                     kamTankat.setStartPlace(place);
                     kamTankat.kamTankat();
                 } else {
@@ -203,6 +202,21 @@ var FuelStation = (function (_Location2) {
 
     _inherits(FuelStation, _Location2);
 
+    _createClass(FuelStation, [{
+        key: "setMarker",
+        value: function setMarker(marker) {
+            this.marker = marker;
+        }
+    }, {
+        key: "removeMarker",
+        value: function removeMarker() {
+            if (this.marker) {
+                this.marker.setMap(undefined);
+                this.marker = undefined;
+            }
+        }
+    }]);
+
     return FuelStation;
 })(Location);
 
@@ -260,6 +274,39 @@ var KamTankat = (function () {
             return true;
         }
     }, {
+        key: "reset",
+        value: function reset() {
+            if (this.fuelStations) {
+                var _iteratorNormalCompletion2 = true;
+                var _didIteratorError2 = false;
+                var _iteratorError2 = undefined;
+
+                try {
+                    for (var _iterator2 = this.fuelStations[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                        var fs = _step2.value;
+
+                        fs.removeMarker();
+                    }
+                } catch (err) {
+                    _didIteratorError2 = true;
+                    _iteratorError2 = err;
+                } finally {
+                    try {
+                        if (!_iteratorNormalCompletion2 && _iterator2["return"]) {
+                            _iterator2["return"]();
+                        }
+                    } finally {
+                        if (_didIteratorError2) {
+                            throw _iteratorError2;
+                        }
+                    }
+                }
+            }
+            this.nearestCrossings = undefined;
+            this.fuelStations = undefined;
+            this.startPlace = undefined;
+        }
+    }, {
         key: "kamTankat",
         value: function kamTankat() {
             //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
@@ -281,19 +328,20 @@ var KamTankat = (function () {
         value: function _kamTankat3(response) {
             this.saveFuelStations(response);
             this.displayFuelStations();
-            this.displayRouteToNearestFuelStation();
+            this.findBestFuelStation();
+            this.displayRouteToBestFuelStation();
         }
     }, {
         key: "findNearestCrossings",
         value: function findNearestCrossings() {
             this.nearestCrossings = [];
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
+            var _iteratorNormalCompletion3 = true;
+            var _didIteratorError3 = false;
+            var _iteratorError3 = undefined;
 
             try {
-                for (var _iterator2 = this.crossings[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                    var c = _step2.value;
+                for (var _iterator3 = this.crossings[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+                    var c = _step3.value;
 
                     this.nearestCrossings.push({
                         crossing: c,
@@ -301,16 +349,16 @@ var KamTankat = (function () {
                     });
                 }
             } catch (err) {
-                _didIteratorError2 = true;
-                _iteratorError2 = err;
+                _didIteratorError3 = true;
+                _iteratorError3 = err;
             } finally {
                 try {
-                    if (!_iteratorNormalCompletion2 && _iterator2["return"]) {
-                        _iterator2["return"]();
+                    if (!_iteratorNormalCompletion3 && _iterator3["return"]) {
+                        _iterator3["return"]();
                     }
                 } finally {
-                    if (_didIteratorError2) {
-                        throw _iteratorError2;
+                    if (_didIteratorError3) {
+                        throw _iteratorError3;
                     }
                 }
             }
@@ -375,48 +423,15 @@ var KamTankat = (function () {
         key: "saveFuelStations",
         value: function saveFuelStations(fuelStationsResponse) {
             this.fuelStations = [];
-            var _iteratorNormalCompletion3 = true;
-            var _didIteratorError3 = false;
-            var _iteratorError3 = undefined;
-
-            try {
-                for (var _iterator3 = fuelStationsResponse[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-                    var fs = _step3.value;
-
-                    this.fuelStations.push(new FuelStation(fs));
-                }
-            } catch (err) {
-                _didIteratorError3 = true;
-                _iteratorError3 = err;
-            } finally {
-                try {
-                    if (!_iteratorNormalCompletion3 && _iterator3["return"]) {
-                        _iterator3["return"]();
-                    }
-                } finally {
-                    if (_didIteratorError3) {
-                        throw _iteratorError3;
-                    }
-                }
-            }
-        }
-    }, {
-        key: "displayFuelStations",
-        value: function displayFuelStations() {
             var _iteratorNormalCompletion4 = true;
             var _didIteratorError4 = false;
             var _iteratorError4 = undefined;
 
             try {
-                for (var _iterator4 = this.fuelStations[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
+                for (var _iterator4 = fuelStationsResponse[Symbol.iterator](), _step4; !(_iteratorNormalCompletion4 = (_step4 = _iterator4.next()).done); _iteratorNormalCompletion4 = true) {
                     var fs = _step4.value;
 
-                    console.log(fs);
-                    new google.maps.Marker({
-                        title: fs.name,
-                        position: fs.location,
-                        map: this.map
-                    });
+                    this.fuelStations.push(new FuelStation(fs));
                 }
             } catch (err) {
                 _didIteratorError4 = true;
@@ -434,8 +449,45 @@ var KamTankat = (function () {
             }
         }
     }, {
-        key: "displayRouteToNearestFuelStation",
-        value: function displayRouteToNearestFuelStation() {
+        key: "displayFuelStations",
+        value: function displayFuelStations() {
+            //TODO create nicer marks, which display some information about fuel stations
+            var _iteratorNormalCompletion5 = true;
+            var _didIteratorError5 = false;
+            var _iteratorError5 = undefined;
+
+            try {
+                for (var _iterator5 = this.fuelStations[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
+                    var fs = _step5.value;
+
+                    console.log(fs);
+                    fs.setMarker(new google.maps.Marker({
+                        title: fs.name,
+                        position: fs.location,
+                        map: this.map
+                    }));
+                }
+            } catch (err) {
+                _didIteratorError5 = true;
+                _iteratorError5 = err;
+            } finally {
+                try {
+                    if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
+                        _iterator5["return"]();
+                    }
+                } finally {
+                    if (_didIteratorError5) {
+                        throw _iteratorError5;
+                    }
+                }
+            }
+        }
+    }, {
+        key: "findBestFuelStation",
+        value: function findBestFuelStation() {}
+    }, {
+        key: "displayRouteToBestFuelStation",
+        value: function displayRouteToBestFuelStation() {
             var request = {
                 origin: this.startPlace.geometry.location,
                 destination: this.fuelStations[0].location,
@@ -459,33 +511,33 @@ var KamTankat = (function () {
 // ** MAIN FUNCTION **
 // *******************
 (function main() {
-    kamTankat = new KamTankat(DEFAULT_CROSSINGS_LIMIT, DEFAULT_FUEL_STATION_RADIUS);
     Util.loadJSON({ method: "GET", url: "js/options.json" }, function (options) {
         Util.options = options;
 
+        kamTankat = new KamTankat(options.crossingsLimit, options.fuelStationRadius);
         google.maps.event.addDomListener(window, "load", Util.googleMapsInit);
         var crossings = [];
-        var _iteratorNormalCompletion5 = true;
-        var _didIteratorError5 = false;
-        var _iteratorError5 = undefined;
+        var _iteratorNormalCompletion6 = true;
+        var _didIteratorError6 = false;
+        var _iteratorError6 = undefined;
 
         try {
-            for (var _iterator5 = options.crossings[Symbol.iterator](), _step5; !(_iteratorNormalCompletion5 = (_step5 = _iterator5.next()).done); _iteratorNormalCompletion5 = true) {
-                var c = _step5.value;
+            for (var _iterator6 = options.crossings[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+                var c = _step6.value;
 
                 crossings.push(new Crossing(c));
             }
         } catch (err) {
-            _didIteratorError5 = true;
-            _iteratorError5 = err;
+            _didIteratorError6 = true;
+            _iteratorError6 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion5 && _iterator5["return"]) {
-                    _iterator5["return"]();
+                if (!_iteratorNormalCompletion6 && _iterator6["return"]) {
+                    _iterator6["return"]();
                 }
             } finally {
-                if (_didIteratorError5) {
-                    throw _iteratorError5;
+                if (_didIteratorError6) {
+                    throw _iteratorError6;
                 }
             }
         }
@@ -493,3 +545,5 @@ var KamTankat = (function () {
         kamTankat.setCrossings(crossings);
     });
 })();
+
+//TODO sort fuel stations so that the best is on top
