@@ -1,37 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8"> 
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
     <link rel="stylesheet" type="text/css" href="css/style.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places"></script>
     <script src="js/kam-tankat.js"></script>
 </head>
 <body>
-    <div class="container col-sm-10 col-sm-offset-1">
-        <section class="content">
-            <div class="content-body">
-                <h1>Kam tankat?!</h1>
-                <p>
-                V vnosna polja vnesi <u>izhodiščno točko</u>, <u>povprečno porabo</u> avtomobila in <u>velikost tanka</u>, aplikacija pa ti bo povedala, ali se ti splača it tankat v Avstrijo in prikazala pot do bencinske črpalke, s katero boš prihranil kar največji znesek.
-                </p>
-                <div class="user-input">
-                    <div class="form-group col-sm-4">
-                        <label for="address">Naslov:</label>
-                        <input class="form-control" type="text" id="address" />
-                    </div>
-                    <div class="form-group col-sm-4">
-                        <label for="fuel-efficiency">Povprečna poraba:</label>
-                        <input class="form-control" type="range" id="fuel-efficiency" />
-                    </div>
-                    <div class="form-group col-sm-4">
-                        <label for="tank-capacity">Kapaciteta tanka:</label>
-                        <input class="form-control" type="range" id="tank-capacity" />
-                    </div>
-                </div>
-                <div id="map-canvas"></div>
+    <div class="container">
+        <nav class="navbar navbar-default">
+          <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header">
+              <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+              </button>
+              <a class="navbar-brand" href="#">Kam Tankat?!</a>
             </div>
-        <section>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+              <ul class="nav navbar-nav navbar-right">
+                  <li><a href="#">Informacije</a></li>
+                  <li><a href="#"><i class="fa fa-github fa-lg"></i> Github</a></li>
+            </div><!-- /.navbar-collapse -->
+          </div><!-- /.container-fluid -->
+        </nav>
+        <div class="jumbotron">
+            <h1>Kam tankat?!</h1>
+            <p>
+            V vnosna polja vnesi <u>izhodiščno točko</u>, <u>povprečno porabo</u> avtomobila in <u>velikost tanka</u>, aplikacija pa ti bo povedala, ali se ti splača it tankat v Avstrijo in prikazala pot do bencinske črpalke, s katero boš prihranil kar največji znesek.
+            </p>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="form-group col-sm-4">
+                    <label for="address">Naslov:</label>
+                    <input class="form-control" type="text" id="address" />
+                </div>
+                <div class="form-group col-sm-4">
+                    <label for="fuel-efficiency">Povprečna poraba:</label>
+                    <input class="form-control" type="range" id="fuel-efficiency" min="1" max="15" step="0.1" />
+                </div>
+                <div class="form-group col-sm-4">
+                    <label for="tank-capacity">Kapaciteta tanka:</label>
+                    <input class="form-control" type="range" id="tank-capacity" min="30" max="150" step="1" />
+                </div>
+            </div>
+        </div>
+        <div id="map-canvas" class="panel panel-default"></div>
     </div>
+    <!-- Bootstrap JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
 <body>
 </html>
