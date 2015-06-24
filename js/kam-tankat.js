@@ -110,16 +110,6 @@ var Util = (function () {
             var directionsService = new google.maps.DirectionsService();
             var directionsDisplay = new google.maps.DirectionsRenderer();
             var autocomplete = new google.maps.places.Autocomplete(inputAddress, Util.options.autocompleteOptions);
-            google.maps.event.addListener(autocomplete, "place_changed", function () {
-                var place = autocomplete.getPlace();
-                if (place.geometry) {
-                    kamTankat.reset();
-                    kamTankat.setStartPlace(place);
-                    kamTankat.kamTankat();
-                } else {
-                    inputAddress.value = "";
-                }
-            });
             directionsDisplay.setMap(map);
 
             kamTankat.setMap(map);
@@ -198,6 +188,7 @@ var FuelStation = (function (_Location2) {
         this.city = initData.city;
         this.open = initData.open;
         this.postalCode = initData.postalCode;
+        this.fuelPrice = new FuelPrice(initData.spritPrice[0]);
     }
 
     _inherits(FuelStation, _Location2);
@@ -309,6 +300,14 @@ var KamTankat = (function () {
     }, {
         key: "kamTankat",
         value: function kamTankat() {
+            var place = this.autocomplete.getPlace();
+            if (place.geometry) {
+                this.reset();
+                this.setStartPlace(place);
+            } else {
+                inputAddress.value = "";
+                return;
+            }
             //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
             this._kamTankat1();
         }
@@ -423,6 +422,7 @@ var KamTankat = (function () {
         key: "saveFuelStations",
         value: function saveFuelStations(fuelStationsResponse) {
             this.fuelStations = [];
+            console.log(fuelStationsResponse);
             var _iteratorNormalCompletion4 = true;
             var _didIteratorError4 = false;
             var _iteratorError4 = undefined;

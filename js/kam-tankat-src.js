@@ -70,16 +70,6 @@ class Util {
         var directionsService = new google.maps.DirectionsService();
         var directionsDisplay = new google.maps.DirectionsRenderer();
         var autocomplete = new google.maps.places.Autocomplete(inputAddress, Util.options.autocompleteOptions);
-        google.maps.event.addListener(autocomplete, 'place_changed', function() {
-            var place = autocomplete.getPlace();
-            if (place.geometry) {
-                kamTankat.reset();
-                kamTankat.setStartPlace(place);
-                kamTankat.kamTankat();
-            } else {
-                inputAddress.value = '';
-            }
-        });
         directionsDisplay.setMap(map);
 
         kamTankat.setMap(map);
@@ -133,6 +123,7 @@ class FuelStation extends Location {
         this.city = initData.city;
         this.open = initData.open;
         this.postalCode = initData.postalCode;
+        this.fuelPrice = new FuelPrice(initData.spritPrice[0]);
     }
 
     setMarker(marker) {
@@ -197,6 +188,14 @@ class KamTankat {
     }
 
     kamTankat() {
+        var place = this.autocomplete.getPlace();
+        if (place.geometry) {
+            this.reset();
+            this.setStartPlace(place);
+        } else {
+            inputAddress.value = '';
+            return;
+        }
         //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
         this._kamTankat1();
     }
@@ -284,6 +283,7 @@ class KamTankat {
 
     saveFuelStations(fuelStationsResponse) {
         this.fuelStations = [];
+        console.log(fuelStationsResponse);
         for (var fs of fuelStationsResponse) {
             this.fuelStations.push(new FuelStation(fs));
         }
@@ -303,6 +303,7 @@ class KamTankat {
 
     findBestFuelStation() {
         //TODO sort fuel stations so that the best is on top
+        
     }
 
     displayRouteToBestFuelStation() {
