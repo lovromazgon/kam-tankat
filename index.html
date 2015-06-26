@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html ng-app>
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -8,7 +8,7 @@
     <link rel="stylesheet" type="text/css" href="css/style.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=places"></script>
-    <script src="js/kam-tankat.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -47,30 +47,47 @@
                 </div>
                 <div class="form-group col-sm-6">
                     <label for="address">Tip goriva:</label>
-                    <select class="form-control" id="fuelType">
+                    <select class="form-control" id="fuel-type">
                         <option value="DIE">Diesel</option>
                         <option value="SUP">Bencin</option>
                     </select>
                 </div>
                 <div class="form-group col-sm-6">
                     <label for="fuel-efficiency">Povprečna poraba:</label>
+                    <!-- TODO display values of range -->
                     <input class="form-control" type="range" id="fuel-efficiency" min="1" max="15" step="0.1" />
                 </div>
                 <div class="form-group col-sm-6">
-                    <label for="tank-capacity">Kapaciteta tanka:</label>
-                    <input class="form-control" type="range" id="tank-capacity" min="30" max="150" step="1" />
+                    <label for="tank-volume">Količina natočenega goriva:</label>
+                    <!-- TODO display values of range -->
+                    <input class="form-control" type="range" id="tank-volume" min="30" max="150" step="1" />
                 </div>
                 <div class="form-group col-sm-6">
-                    <button type="submit" class="btn btn-success" onclick="submit()">Izračun</button>
+                    <button class="btn btn-success" onclick="submit()">Izračun</button>
+                    <button class="btn btn-primary" onclick="reset()">Reset</button>
                 </div>
+            </div>
+        </div>
+        <div id="results" class="panel panel-default" style="display:none;">
+            <div class="panel-body">
+                Rezultati
             </div>
         </div>
         <div id="map-canvas" class="panel panel-default"></div>
     </div>
     <!-- Bootstrap JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="js/kam-tankat.js"></script>
     <script>
         function submit() {
-            kamTankat.kamTankat();
+            kamTankat.kamTankat(success);
+        }
+        function success() {
+            $('#results').slideDown();
+        }
+        
+        function reset() {
+            kamTankat.reset();
         }
     </script>
 <body>

@@ -1,6 +1,6 @@
 var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
 
-var kamTankat;
+var kamTankat, view;
 
 // **********************
 // ** HELPER FUNCTIONS **
@@ -39,10 +39,10 @@ class Util {
         request.send(data.query);
     }
     
-    static createAUTQueryString(location, radius) {
+    static createAUTQueryString(location, radius, fuel) {
         console.log(location);
         var checked = '"checked"';
-        var fuel = '"DIE"';
+        var fuel = '"' + fuel + '"';
         var circleBounds = new google.maps.Circle({center: location, radius: radius}).getBounds();
         var northEast = circleBounds.getNorthEast();
         var southWest = circleBounds.getSouthWest();
@@ -72,6 +72,11 @@ class Util {
         var autocomplete = new google.maps.places.Autocomplete(inputAddress, Util.options.autocompleteOptions);
         directionsDisplay.setMap(map);
 
+        google.maps.event.addListenerOnce(map, 'bounds_changed', function(){
+            Util.options.mapOptions.initialBounds = this.getBounds();
+            kamTankat.reset();
+        });
+
         kamTankat.setMap(map);
         kamTankat.setDirectionsService(directionsService);
         kamTankat.setDirectionsDisplay(directionsDisplay);
@@ -88,6 +93,9 @@ function kamTankat2Callback(response) {
 }
 function kamTankat3Callback(response) {
     kamTankat._kamTankat3(response);
+}
+function kamTankat4Callback(response) {
+    kamTankat._kamTankat4(response);
 }
 
 // ***********************
@@ -136,6 +144,10 @@ class FuelStation extends Location {
             this.marker = undefined;
         }
     }
+    
+    calculateFuelConsumption() {
+        this.fuelConsumption = view.getFuelEfficiency() * this.distance.value / 100000; // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km
+    }
 }
 
 class FuelPrice {
@@ -170,6 +182,7 @@ class KamTankat {
         this.autocomplete = autocomplete;
     }
 
+    //for debugging purposes
     isReady() {
         if (!this.crossings || !this.map || !this.directionsService || !this.directionsDisplay || !this.startPlace) {
             return false;
@@ -185,9 +198,13 @@ class KamTankat {
         this.nearestCrossings = undefined;
         this.fuelStations = undefined;
         this.startPlace = undefined;
+        this.directionsDisplay.set('directions', null);
+        this.map.fitBounds(Util.options.mapOptions.initialBounds);
+        view.reset();
     }
 
-    kamTankat() {
+    kamTankat(successCallback) {
+        this.successCallback = successCallback;
         var place = this.autocomplete.getPlace();
         if (place.geometry) {
             this.reset();
@@ -196,22 +213,26 @@ class KamTankat {
             inputAddress.value = '';
             return;
         }
-        //the method is divided between 3 methods, because.. callbacks.. and JavaScript awesomeness
+        //the method is divided between 4 methods, because.. callbacks.. and JavaScript awesomeness
         this._kamTankat1();
     }
 
     _kamTankat1() {
         this.findNearestCrossings();
-        this.calculateDistanceAndDurationToNearestCrossings(kamTankat2Callback);
+        this.sortNearestCrossings(kamTankat2Callback);
     }
     _kamTankat2() {
         this.findFuelStations(kamTankat3Callback);
     }
     _kamTankat3(response) {
         this.saveFuelStations(response);
-        this.displayFuelStations();
-        this.findBestFuelStation();
+        this.sortFuelStations(kamTankat4Callback);
+    }
+    _kamTankat4() {
+        this.displayFuelStationMarkers();
         this.displayRouteToBestFuelStation();
+        view.displayResults();
+        this.successCallback();
     }
 
     findNearestCrossings() {
@@ -227,7 +248,7 @@ class KamTankat {
         });
     }
 
-    calculateDistanceAndDurationToNearestCrossings(callback, i) {
+    sortNearestCrossings(callback, i) {
         if (!i) {
             i = 0;
         }
@@ -263,15 +284,16 @@ class KamTankat {
             }
             else {
                 console.log(status);
+                alert("Prišlo je do napake!");
             }
-            kamTankat.calculateDistanceAndDurationToNearestCrossings(callback, i+1);
+            kamTankat.sortNearestCrossings(callback, i+1);
         });
     }
 
     findFuelStations(callback) {
         console.log(this.nearestCrossings);
 
-        var queryString = Util.createAUTQueryString(this.nearestCrossings[0].crossing.location, this.fuelStationRadius);
+        var queryString = Util.createAUTQueryString(this.nearestCrossings[0].crossing.location, this.fuelStationRadius, view.getFuelType());
         Util.loadJSON({
             method: 'POST',
             url:FUEL_PRICE_AUT_URL,
@@ -289,7 +311,7 @@ class KamTankat {
         }
     }
 
-    displayFuelStations() {
+    displayFuelStationMarkers() {
         //TODO create nicer marks, which display some information about fuel stations
         for (var fs of this.fuelStations) {
             console.log(fs);
@@ -301,9 +323,53 @@ class KamTankat {
         }
     }
 
-    findBestFuelStation() {
-        //TODO sort fuel stations so that the best is on top
+    sortFuelStations(callback, i) {
+        if (!i) {
+            i = 0;
+        }
+        var fs = this.fuelStations[i];
+        if (!fs) {
+            this.fuelStations.sort(function(a,b) {
+                if (!a.fuelConsumption && !b.fuelConsumption) {
+                    return 0;
+                }
+                else if (!a.fuelConsumption) {
+                    return 1;
+                }
+                else if (!b.fuelConsumption) {
+                    return -1;
+                }
+                return a.fuelConsumption - b.fuelConsumption;
+            });
+            callback();
+            return;
+        }
         
+        if (fs.fuelPrice.price === "" || (i > 0 && this.fuelStations[i-1].fuelPrice.price == fs.fuelPrice.price)) {
+            kamTankat.sortFuelStations(callback, i+1);
+            return;
+        }
+
+        console.log(fs);
+        var request = {
+            origin: this.startPlace.geometry.location,
+            destination: fs.location,
+            travelMode: google.maps.TravelMode.DRIVING
+        };
+
+        this.directionsService.route(request, function(response, status) {
+            if (status == google.maps.DirectionsStatus.OK) {
+                kamTankat.fuelStations[i].distance = response.routes[0].legs[0].distance;
+                kamTankat.fuelStations[i].duration = response.routes[0].legs[0].duration;
+                kamTankat.fuelStations[i].directions = response;
+                kamTankat.fuelStations[i].calculateFuelConsumption();
+            }
+            else {
+                console.log(status);
+                alert("Prišlo je do napake!");
+            }
+            kamTankat.sortFuelStations(callback, i+1);
+        });
     }
 
     displayRouteToBestFuelStation() {
@@ -324,6 +390,33 @@ class KamTankat {
     }
 }
 
+class View {
+    constructor() {
+        this.resultsPanel = $('#results');
+        this.fuelEfficiencyInput = $('#fuel-efficiency');
+        this.tankVolumeInput = $('#tank-volume');
+        this.fuelTypeInput = $('#fuel-type');
+    }
+
+    getFuelEfficiency() {
+        return this.fuelEfficiencyInput.val();
+    }
+    getTankCapacity() {
+        return this.tankVolumeInput.val();
+    }
+    getFuelType() {
+        return this.fuelTypeInput.val();
+    }
+
+    reset() {
+        this.resultsPanel.slideUp();
+    }
+
+    displayResults() {
+        this.resultsPanel.slideDown();
+    }
+}
+
 // *******************
 // ** MAIN FUNCTION **
 // *******************
@@ -331,6 +424,7 @@ class KamTankat {
     Util.loadJSON({method:"GET", url:"js/options.json"}, function(options) {
         Util.options = options;
 
+        view = new View();
         kamTankat = new KamTankat(options.crossingsLimit, options.fuelStationRadius);
         google.maps.event.addDomListener(window, 'load', Util.googleMapsInit);
         var crossings = [];
