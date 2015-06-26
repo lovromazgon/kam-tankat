@@ -1,4 +1,5 @@
-var FUEL_PRICE_AUT_URL = "http://107.161.149.156/kam-tankat.php";
+var FUEL_PRICE_AUT_URL = "http://107.161.149.156/aut-price.php";
+var FUEL_PRICE_SLO_URL = "http://107.161.149.156/slo-price.php";
 
 var kamTankat, view;
 
@@ -40,7 +41,6 @@ class Util {
     }
     
     static createAUTQueryString(location, radius, fuel) {
-        console.log(location);
         var checked = '"checked"';
         var fuel = '"' + fuel + '"';
         var circleBounds = new google.maps.Circle({center: location, radius: radius}).getBounds();
@@ -131,7 +131,7 @@ class FuelStation extends Location {
         this.city = initData.city;
         this.open = initData.open;
         this.postalCode = initData.postalCode;
-        this.fuelPrice = new FuelPrice(initData.spritPrice[0]);
+        this.fuelPrice = new FuelPrice(initData.spritPrice[0].amount, initData.spritPrice[0].spritId);
     }
 
     setMarker(marker) {
@@ -145,15 +145,17 @@ class FuelStation extends Location {
         }
     }
     
-    calculateFuelConsumption() {
-        this.fuelConsumption = view.getFuelEfficiency() * this.distance.value / 100000; // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km
+    calculateSavings() {
+        this.tankCost = view.getTankVolume() * this.fuelPrice.price;
+        this.fuelConsumption = (view.getFuelEfficiency() * this.distance.value / 100000) * 2; // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km ; *2 because you make the trip to the fuel station and back
+        this.savings = kamTankat.sloTankCost - this.tankCost - this.fuelConsumption;
     }
 }
 
 class FuelPrice {
-    constructor(initData) {
-        this.price = initData.amount;
-        this.type = initData.spritId;
+    constructor(price, type) {
+        this.price = price;
+        this.type = type;
     }
 }
 
@@ -161,6 +163,8 @@ class KamTankat {
     constructor(crossingsLimit, fuelStationRadius) {
         this.crossingsLimit = crossingsLimit;
         this.fuelStationRadius = fuelStationRadius;
+        this.sloFuelPrice = [];
+        this.parseSloFuelPrices();
     }
 
     setCrossings(crossings) {
@@ -203,6 +207,17 @@ class KamTankat {
         view.reset();
     }
 
+    parseSloFuelPrices() {
+        Util.loadJSON({method:"GET", url:FUEL_PRICE_SLO_URL}, function(response) {
+            kamTankat.sloFuelPrice['DIE'] = new FuelPrice(parseFloat(response.Slovenia['diesel'].normal.price), 'DIE');
+            kamTankat.sloFuelPrice['SUP'] = new FuelPrice(parseFloat(response.Slovenia['95'].normal.price), 'SUP');
+        });
+    }
+
+    getSloFuelPrice(fuelType) {
+        return this.sloFuelPrice[fuelType].price;
+    }
+
     kamTankat(successCallback) {
         this.successCallback = successCallback;
         var place = this.autocomplete.getPlace();
@@ -219,6 +234,7 @@ class KamTankat {
     }
 
     _kamTankat1() {
+        this.calculateSloTankCost(view.getFuelType());
         this.findNearestCrossings();
         this.sortNearestCrossings(kamTankat2Callback);
     }
@@ -234,6 +250,10 @@ class KamTankat {
         this.displayRouteToBestFuelStation();
         view.afterKamTankat();
         this.successCallback();
+    }
+
+    calculateSloTankCost(fuelType) {
+        this.sloTankCost = view.getTankVolume() * this.getSloFuelPrice(fuelType);
     }
 
     findNearestCrossings() {
@@ -292,8 +312,6 @@ class KamTankat {
     }
 
     findFuelStations(callback) {
-        console.log(this.nearestCrossings);
-
         var queryString = Util.createAUTQueryString(this.nearestCrossings[0].crossing.location, this.fuelStationRadius, view.getFuelType());
         Util.loadJSON({
             method: 'POST',
@@ -308,8 +326,11 @@ class KamTankat {
         this.fuelStations = [];
         console.log(fuelStationsResponse);
         for (var fs of fuelStationsResponse) {
-            this.fuelStations.push(new FuelStation(fs));
+            if (fs.spritPrice[0].amount !== "") {
+                this.fuelStations.push(new FuelStation(fs));
+            }
         }
+        console.log(this.fuelStations);
     }
 
     displayFuelStationMarkers() {
@@ -331,27 +352,26 @@ class KamTankat {
         var fs = this.fuelStations[i];
         if (!fs) {
             this.fuelStations.sort(function(a,b) {
-                if (!a.fuelConsumption && !b.fuelConsumption) {
+                if (!a.savings && !b.savings) {
                     return 0;
                 }
-                else if (!a.fuelConsumption) {
-                    return 1;
-                }
-                else if (!b.fuelConsumption) {
+                else if (!a.savings) {
                     return -1;
                 }
-                return a.fuelConsumption - b.fuelConsumption;
+                else if (!b.savings) {
+                    return 1;
+                }
+                return b.savings - a.savings;
             });
             callback();
             return;
         }
         
-        if (fs.fuelPrice.price === "" || (i > 0 && this.fuelStations[i-1].fuelPrice.price == fs.fuelPrice.price)) {
+        if (fs.fuelPrice.price === "") {
             kamTankat.sortFuelStations(callback, i+1);
             return;
         }
 
-        console.log(fs);
         var request = {
             origin: this.startPlace.geometry.location,
             destination: fs.location,
@@ -363,7 +383,7 @@ class KamTankat {
                 kamTankat.fuelStations[i].distance = response.routes[0].legs[0].distance;
                 kamTankat.fuelStations[i].duration = response.routes[0].legs[0].duration;
                 kamTankat.fuelStations[i].directions = response;
-                kamTankat.fuelStations[i].calculateFuelConsumption();
+                kamTankat.fuelStations[i].calculateSavings();
             }
             else {
                 console.log(status);
@@ -398,12 +418,13 @@ class View {
         this.fuelEfficiencyInput = $('#fuel-efficiency');
         this.tankVolumeInput = $('#tank-volume');
         this.fuelTypeInput = $('#fuel-type');
+        this.resultsTable = this.resultsPanel.find('tbody');
     }
 
     getFuelEfficiency() {
         return this.fuelEfficiencyInput.val();
     }
-    getTankCapacity() {
+    getTankVolume() {
         return this.tankVolumeInput.val();
     }
     getFuelType() {
@@ -411,15 +432,44 @@ class View {
     }
 
     reset() {
+        //TODO
         this.resultsPanel.slideUp();
+        this.resultsTable.empty();
     }
 
     beforeKamTankat() {
         this.overlay.fadeIn();
     }
     afterKamTankat() {
+        //TODO panel heading
+        if (kamTankat.fuelStations[0].savings > 0) {
+            resultsPanel.addClass('panel-success');
+        }
+        else {
+            resultsPanel.addClass('panel-danger');
+        }
+        this.displayResults();
         this.overlay.fadeOut();
         this.resultsPanel.slideDown();
+    }
+
+    displayResults() {
+        for (var fs of kamTankat.fuelStations) {
+            var row = $('<tr>');
+            var col1 = '<td>' + fs.name + '</td>';
+            var col2 = '<td>' + fs.distance.text + '</td>';
+            var col3 = '<td>' + fs.duration.text + '</td>';
+            var col4 = '<td>' + fs.fuelPrice.price + '</td>';
+            var col5 = '<td>' + fs.tankCost + '</td>';
+            var col6 = '<td>' + fs.savings + '</td>';
+            row.append(col1);
+            row.append(col2);
+            row.append(col3);
+            row.append(col4);
+            row.append(col5);
+            row.append(col6);
+            this.resultsTable.append(row);
+        }
     }
 }
 
