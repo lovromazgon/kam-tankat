@@ -213,6 +213,7 @@ class KamTankat {
             inputAddress.value = '';
             return;
         }
+        view.beforeKamTankat();
         //the method is divided between 4 methods, because.. callbacks.. and JavaScript awesomeness
         this._kamTankat1();
     }
@@ -231,7 +232,7 @@ class KamTankat {
     _kamTankat4() {
         this.displayFuelStationMarkers();
         this.displayRouteToBestFuelStation();
-        view.displayResults();
+        view.afterKamTankat();
         this.successCallback();
     }
 
@@ -393,6 +394,7 @@ class KamTankat {
 class View {
     constructor() {
         this.resultsPanel = $('#results');
+        this.overlay = $('.overlay');
         this.fuelEfficiencyInput = $('#fuel-efficiency');
         this.tankVolumeInput = $('#tank-volume');
         this.fuelTypeInput = $('#fuel-type');
@@ -412,7 +414,11 @@ class View {
         this.resultsPanel.slideUp();
     }
 
-    displayResults() {
+    beforeKamTankat() {
+        this.overlay.fadeIn();
+    }
+    afterKamTankat() {
+        this.overlay.fadeOut();
         this.resultsPanel.slideDown();
     }
 }

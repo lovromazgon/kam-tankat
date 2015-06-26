@@ -66,6 +66,9 @@
                     <button class="btn btn-success" onclick="submit()">Izračun</button>
                     <button class="btn btn-primary" onclick="reset()">Reset</button>
                 </div>
+                <div class="overlay" style="display:none;">
+                    <div class="hexdots-loader"></div>
+                </div>
             </div>
         </div>
         <div id="results" class="panel panel-default" style="display:none;">
@@ -83,7 +86,7 @@
             kamTankat.kamTankat(success);
         }
         function success() {
-            $('#results').slideDown();
+            //do whatever the ... you want to do!
         }
         
         function reset() {
