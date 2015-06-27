@@ -25,6 +25,10 @@ body {
     text-align: center;
 }
 
+.bold {
+    font-weight: bold;
+}
+
 /* Hexdots loader from www.css-spinners.com */
 @-moz-keyframes hexdots-loader {
   0% {

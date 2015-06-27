@@ -82,6 +82,11 @@ class Util {
         kamTankat.setDirectionsDisplay(directionsDisplay);
         kamTankat.setAutocomplete(autocomplete);
     }
+
+    static round(number, decimals) {
+        var t = Math.pow(10, decimals);
+        return Math.round(number * t) / t;
+    }
 }
 
 // ***************
@@ -145,10 +150,10 @@ class FuelStation extends Location {
         }
     }
     
-    calculateSavings() {
-        this.tankCost = view.getTankVolume() * this.fuelPrice.price;
-        this.fuelConsumption = (view.getFuelEfficiency() * this.distance.value / 100000) * 2; // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km ; *2 because you make the trip to the fuel station and back
-        this.savings = kamTankat.sloTankCost - this.tankCost - this.fuelConsumption;
+    calculateSavings(sloTankCost) {
+        this.tankCost = Util.round(view.getTankVolume() * this.fuelPrice.price, 2);
+        this.fuelConsumption = Util.round((view.getFuelEfficiency() * this.distance.value / 100000) * 2, 2); // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km ; *2 because you make the trip to the fuel station and back
+        this.savings = Util.round(sloTankCost - this.tankCost - this.fuelConsumption, 2);
     }
 }
 
@@ -253,7 +258,7 @@ class KamTankat {
     }
 
     calculateSloTankCost(fuelType) {
-        this.sloTankCost = view.getTankVolume() * this.getSloFuelPrice(fuelType);
+        this.sloTankCost = Util.round(view.getTankVolume() * this.getSloFuelPrice(fuelType), 2);
     }
 
     findNearestCrossings() {
@@ -383,7 +388,7 @@ class KamTankat {
                 kamTankat.fuelStations[i].distance = response.routes[0].legs[0].distance;
                 kamTankat.fuelStations[i].duration = response.routes[0].legs[0].duration;
                 kamTankat.fuelStations[i].directions = response;
-                kamTankat.fuelStations[i].calculateSavings();
+                kamTankat.fuelStations[i].calculateSavings(kamTankat.sloTankCost);
             }
             else {
                 console.log(status);
@@ -419,6 +424,8 @@ class View {
         this.tankVolumeInput = $('#tank-volume');
         this.fuelTypeInput = $('#fuel-type');
         this.resultsTable = this.resultsPanel.find('tbody');
+        this.panelHeading = this.resultsPanel.find('.panel-heading');
+        this.panelBody = this.resultsPanel.find('.panel-body');
     }
 
     getFuelEfficiency() {
@@ -441,33 +448,60 @@ class View {
         this.overlay.fadeIn();
     }
     afterKamTankat() {
-        //TODO panel heading
-        if (kamTankat.fuelStations[0].savings > 0) {
-            resultsPanel.addClass('panel-success');
-        }
-        else {
-            resultsPanel.addClass('panel-danger');
-        }
-        this.displayResults();
+        this.fillPanelHeading();
+        this.fillPanelBody();
+        this.displayResultsTable();
         this.overlay.fadeOut();
         this.resultsPanel.slideDown();
     }
 
-    displayResults() {
+    fillPanelHeading() {
+        var panelClass, headingContent;
+
+        if (kamTankat.fuelStations[0].savings > 0) {
+            panelClass = 'panel-success';
+            headingContent = 'Pojdi tankat v Avstrijo!';
+        }
+        else {
+            panelClass = 'panel-danger';
+            headingContent = 'Ostani v Sloveniji!';
+        }
+
+        //this.resultsPanel.addClass(panelClass);
+
+        var heading = $('<h2>');
+        heading.text(headingContent);
+
+        this.panelHeading.empty();
+        this.panelHeading.append(heading);
+    }
+
+    fillPanelBody() {
+        var tankVolume = this.panelBody.find('#tank-volume-out');
+        var sloTankCost = this.panelBody.find('#slo-tank-cost-out');
+        var autSavings = this.panelBody.find('#aut-savings-out');
+
+        tankVolume.text(this.getTankVolume());
+        sloTankCost.text(kamTankat.sloTankCost);
+        autSavings.text(kamTankat.fuelStations[0].savings);
+    }
+
+    displayResultsTable() {
         for (var fs of kamTankat.fuelStations) {
             var row = $('<tr>');
-            var col1 = '<td>' + fs.name + '</td>';
-            var col2 = '<td>' + fs.distance.text + '</td>';
-            var col3 = '<td>' + fs.duration.text + '</td>';
-            var col4 = '<td>' + fs.fuelPrice.price + '</td>';
-            var col5 = '<td>' + fs.tankCost + '</td>';
-            var col6 = '<td>' + fs.savings + '</td>';
-            row.append(col1);
-            row.append(col2);
-            row.append(col3);
-            row.append(col4);
-            row.append(col5);
-            row.append(col6);
+            if (fs.savings > 0) {
+                row.addClass('success');
+            }
+            var cols = [];
+            cols.push('<td>' + fs.name + '</td>');
+            cols.push('<td>' + fs.distance.text + '</td>');
+            cols.push('<td>' + fs.duration.text + '</td>');
+            cols.push('<td>' + fs.fuelPrice.price + '</td>');
+            cols.push('<td>' + fs.tankCost + '</td>');
+            cols.push('<td><b>' + fs.savings + '</b></td>');
+            for (var col of cols) {
+                row.append(col);
+            }
             this.resultsTable.append(row);
         }
     }

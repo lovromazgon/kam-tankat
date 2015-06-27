@@ -122,6 +122,12 @@ var Util = (function () {
             kamTankat.setDirectionsDisplay(directionsDisplay);
             kamTankat.setAutocomplete(autocomplete);
         }
+    }, {
+        key: "round",
+        value: function round(number, decimals) {
+            var t = Math.pow(10, decimals);
+            return Math.round(number * t) / t;
+        }
     }]);
 
     return Util;
@@ -216,10 +222,10 @@ var FuelStation = (function (_Location2) {
         }
     }, {
         key: "calculateSavings",
-        value: function calculateSavings() {
-            this.tankCost = view.getTankVolume() * this.fuelPrice.price;
-            this.fuelConsumption = view.getFuelEfficiency() * this.distance.value / 100000 * 2; // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km ; *2 because you make the trip to the fuel station and back
-            this.savings = kamTankat.sloTankCost - this.tankCost - this.fuelConsumption;
+        value: function calculateSavings(sloTankCost) {
+            this.tankCost = Util.round(view.getTankVolume() * this.fuelPrice.price, 2);
+            this.fuelConsumption = Util.round(view.getFuelEfficiency() * this.distance.value / 100000 * 2, 2); // /1000 because of conversion from KM to M, /100 because efficiency is in l/100km ; *2 because you make the trip to the fuel station and back
+            this.savings = Util.round(sloTankCost - this.tankCost - this.fuelConsumption, 2);
         }
     }]);
 
@@ -377,7 +383,7 @@ var KamTankat = (function () {
     }, {
         key: "calculateSloTankCost",
         value: function calculateSloTankCost(fuelType) {
-            this.sloTankCost = view.getTankVolume() * this.getSloFuelPrice(fuelType);
+            this.sloTankCost = Util.round(view.getTankVolume() * this.getSloFuelPrice(fuelType), 2);
         }
     }, {
         key: "findNearestCrossings",
@@ -572,7 +578,7 @@ var KamTankat = (function () {
                     kamTankat.fuelStations[i].distance = response.routes[0].legs[0].distance;
                     kamTankat.fuelStations[i].duration = response.routes[0].legs[0].duration;
                     kamTankat.fuelStations[i].directions = response;
-                    kamTankat.fuelStations[i].calculateSavings();
+                    kamTankat.fuelStations[i].calculateSavings(kamTankat.sloTankCost);
                 } else {
                     console.log(status);
                     alert("Prišlo je do napake!");
@@ -612,6 +618,8 @@ var View = (function () {
         this.tankVolumeInput = $("#tank-volume");
         this.fuelTypeInput = $("#fuel-type");
         this.resultsTable = this.resultsPanel.find("tbody");
+        this.panelHeading = this.resultsPanel.find(".panel-heading");
+        this.panelBody = this.resultsPanel.find(".panel-body");
     }
 
     _createClass(View, [{
@@ -644,19 +652,47 @@ var View = (function () {
     }, {
         key: "afterKamTankat",
         value: function afterKamTankat() {
-            //TODO panel heading
-            if (kamTankat.fuelStations[0].savings > 0) {
-                resultsPanel.addClass("panel-success");
-            } else {
-                resultsPanel.addClass("panel-danger");
-            }
-            this.displayResults();
+            this.fillPanelHeading();
+            this.fillPanelBody();
+            this.displayResultsTable();
             this.overlay.fadeOut();
             this.resultsPanel.slideDown();
         }
     }, {
-        key: "displayResults",
-        value: function displayResults() {
+        key: "fillPanelHeading",
+        value: function fillPanelHeading() {
+            var panelClass, headingContent;
+
+            if (kamTankat.fuelStations[0].savings > 0) {
+                panelClass = "panel-success";
+                headingContent = "Pojdi tankat v Avstrijo!";
+            } else {
+                panelClass = "panel-danger";
+                headingContent = "Ostani v Sloveniji!";
+            }
+
+            //this.resultsPanel.addClass(panelClass);
+
+            var heading = $("<h2>");
+            heading.text(headingContent);
+
+            this.panelHeading.empty();
+            this.panelHeading.append(heading);
+        }
+    }, {
+        key: "fillPanelBody",
+        value: function fillPanelBody() {
+            var tankVolume = this.panelBody.find("#tank-volume-out");
+            var sloTankCost = this.panelBody.find("#slo-tank-cost-out");
+            var autSavings = this.panelBody.find("#aut-savings-out");
+
+            tankVolume.text(this.getTankVolume());
+            sloTankCost.text(kamTankat.sloTankCost);
+            autSavings.text(kamTankat.fuelStations[0].savings);
+        }
+    }, {
+        key: "displayResultsTable",
+        value: function displayResultsTable() {
             var _iteratorNormalCompletion6 = true;
             var _didIteratorError6 = false;
             var _iteratorError6 = undefined;
@@ -666,18 +702,41 @@ var View = (function () {
                     var fs = _step6.value;
 
                     var row = $("<tr>");
-                    var col1 = "<td>" + fs.name + "</td>";
-                    var col2 = "<td>" + fs.distance.text + "</td>";
-                    var col3 = "<td>" + fs.duration.text + "</td>";
-                    var col4 = "<td>" + fs.fuelPrice.price + "</td>";
-                    var col5 = "<td>" + fs.tankCost + "</td>";
-                    var col6 = "<td>" + fs.savings + "</td>";
-                    row.append(col1);
-                    row.append(col2);
-                    row.append(col3);
-                    row.append(col4);
-                    row.append(col5);
-                    row.append(col6);
+                    if (fs.savings > 0) {
+                        row.addClass("success");
+                    }
+                    var cols = [];
+                    cols.push("<td>" + fs.name + "</td>");
+                    cols.push("<td>" + fs.distance.text + "</td>");
+                    cols.push("<td>" + fs.duration.text + "</td>");
+                    cols.push("<td>" + fs.fuelPrice.price + "</td>");
+                    cols.push("<td>" + fs.tankCost + "</td>");
+                    cols.push("<td><b>" + fs.savings + "</b></td>");
+                    var _iteratorNormalCompletion7 = true;
+                    var _didIteratorError7 = false;
+                    var _iteratorError7 = undefined;
+
+                    try {
+                        for (var _iterator7 = cols[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+                            var col = _step7.value;
+
+                            row.append(col);
+                        }
+                    } catch (err) {
+                        _didIteratorError7 = true;
+                        _iteratorError7 = err;
+                    } finally {
+                        try {
+                            if (!_iteratorNormalCompletion7 && _iterator7["return"]) {
+                                _iterator7["return"]();
+                            }
+                        } finally {
+                            if (_didIteratorError7) {
+                                throw _iteratorError7;
+                            }
+                        }
+                    }
+
                     this.resultsTable.append(row);
                 }
             } catch (err) {
@@ -711,27 +770,27 @@ var View = (function () {
         kamTankat = new KamTankat(options.crossingsLimit, options.fuelStationRadius);
         google.maps.event.addDomListener(window, "load", Util.googleMapsInit);
         var crossings = [];
-        var _iteratorNormalCompletion7 = true;
-        var _didIteratorError7 = false;
-        var _iteratorError7 = undefined;
+        var _iteratorNormalCompletion8 = true;
+        var _didIteratorError8 = false;
+        var _iteratorError8 = undefined;
 
         try {
-            for (var _iterator7 = options.crossings[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
-                var c = _step7.value;
+            for (var _iterator8 = options.crossings[Symbol.iterator](), _step8; !(_iteratorNormalCompletion8 = (_step8 = _iterator8.next()).done); _iteratorNormalCompletion8 = true) {
+                var c = _step8.value;
 
                 crossings.push(new Crossing(c));
             }
         } catch (err) {
-            _didIteratorError7 = true;
-            _iteratorError7 = err;
+            _didIteratorError8 = true;
+            _iteratorError8 = err;
         } finally {
             try {
-                if (!_iteratorNormalCompletion7 && _iterator7["return"]) {
-                    _iterator7["return"]();
+                if (!_iteratorNormalCompletion8 && _iterator8["return"]) {
+                    _iterator8["return"]();
                 }
             } finally {
-                if (_didIteratorError7) {
-                    throw _iteratorError7;
+                if (_didIteratorError8) {
+                    throw _iteratorError8;
                 }
             }
         }
