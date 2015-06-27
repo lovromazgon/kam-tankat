@@ -226,11 +226,11 @@ class KamTankat {
     kamTankat(successCallback) {
         this.successCallback = successCallback;
         var place = this.autocomplete.getPlace();
-        if (place.geometry) {
+        if (place && place.geometry) {
             this.reset();
             this.setStartPlace(place);
         } else {
-            inputAddress.value = '';
+            alert('Vnesti moraš lokacijo in jo izbrati iz spustnega seznama!');
             return;
         }
         view.beforeKamTankat();
@@ -425,7 +425,8 @@ class View {
         this.fuelTypeInput = $('#fuel-type');
         this.resultsTable = this.resultsPanel.find('tbody');
         this.panelHeading = this.resultsPanel.find('.panel-heading');
-        this.panelBody = this.resultsPanel.find('.panel-body');
+        this.panelBodySuccess = this.resultsPanel.find('#body-success');
+        this.panelBodyFail = this.resultsPanel.find('#body-fail');
     }
 
     getFuelEfficiency() {
@@ -442,6 +443,9 @@ class View {
         //TODO
         this.resultsPanel.slideUp();
         this.resultsTable.empty();
+        this.resultsPanel.removeClass('panel-danger');
+        this.panelBodySuccess.hide();
+        this.panelBodyFail.hide();
     }
 
     beforeKamTankat() {
@@ -456,18 +460,16 @@ class View {
     }
 
     fillPanelHeading() {
-        var panelClass, headingContent;
+        var headingContent;
 
         if (kamTankat.fuelStations[0].savings > 0) {
-            panelClass = 'panel-success';
             headingContent = 'Pojdi tankat v Avstrijo!';
         }
         else {
-            panelClass = 'panel-danger';
+            this.resultsPanel.addClass('panel-danger');
             headingContent = 'Ostani v Sloveniji!';
         }
 
-        //this.resultsPanel.addClass(panelClass);
 
         var heading = $('<h2>');
         heading.text(headingContent);
@@ -477,13 +479,24 @@ class View {
     }
 
     fillPanelBody() {
-        var tankVolume = this.panelBody.find('#tank-volume-out');
-        var sloTankCost = this.panelBody.find('#slo-tank-cost-out');
-        var autSavings = this.panelBody.find('#aut-savings-out');
+        var panelBody;
+        if (kamTankat.fuelStations[0].savings <= 0) {
+            panelBody = this.panelBodyFail;
+        } else {
+            panelBody = this.panelBodySuccess;
+        }
+        var tankVolume = panelBody.find('#tank-volume-out');
+        var sloTankCost = panelBody.find('#slo-tank-cost-out');
+        var autSavings = panelBody.find('#aut-savings-out');
 
         tankVolume.text(this.getTankVolume());
         sloTankCost.text(kamTankat.sloTankCost);
-        autSavings.text(kamTankat.fuelStations[0].savings);
+        if (kamTankat.fuelStations[0].savings <=0) {
+            autSavings.text(- kamTankat.fuelStations[0].savings);
+        } else {
+            autSavings.text(kamTankat.fuelStations[0].savings);
+        }
+        panelBody.show();
     }
 
     displayResultsTable() {
@@ -496,9 +509,9 @@ class View {
             cols.push('<td>' + fs.name + '</td>');
             cols.push('<td>' + fs.distance.text + '</td>');
             cols.push('<td>' + fs.duration.text + '</td>');
-            cols.push('<td>' + fs.fuelPrice.price + '</td>');
-            cols.push('<td>' + fs.tankCost + '</td>');
-            cols.push('<td><b>' + fs.savings + '</b></td>');
+            cols.push('<td>' + fs.fuelPrice.price + ' €/l</td>');
+            cols.push('<td>' + fs.tankCost + ' €</td>');
+            cols.push('<td><b>' + fs.savings + ' €</b></td>');
             for (var col of cols) {
                 row.append(col);
             }

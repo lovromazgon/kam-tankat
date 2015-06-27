@@ -36,7 +36,7 @@
         <div class="jumbotron">
             <h1>Kam tankat?!</h1>
             <p>
-            V vnosna polja vnesi <u>izhodiščno točko</u>, <u>povprečno porabo</u> avtomobila in <u>velikost tanka</u>, aplikacija pa ti bo povedala, ali se ti splača it tankat v Avstrijo in prikazala pot do bencinske črpalke, s katero boš prihranil kar največji znesek.
+            V vnosna polja vnesi <u>svojo lokacijo</u>, <u>povprečno porabo</u> avtomobila, <u>tip</u> in <u>količino goriva</u>, ki jo nameravaš natočiti. Aplikacija bo nato izračunala, ali se ti zaradi nakupa goriva splača peljati v Avstrijo, izračunala bo tvoj prihranek ter prikazala pot do bencinske črpalke, s katero boš prihranil kar največji znesek.
             </p>
         </div>
         <div class="panel panel-default">
@@ -54,13 +54,17 @@
                 </div>
                 <div class="form-group col-sm-6">
                     <label for="fuel-efficiency">Povprečna poraba:</label>
-                    <!-- TODO display values of range -->
-                    <input class="form-control" type="range" id="fuel-efficiency" min="1" max="15" step="0.1" />
+                    <div class="range">
+                        <output id="feOutput">7</output>
+                        <input class="form-control" type="range" id="fuel-efficiency" min="1" max="15" step="0.1" value="7" oninput="feOutput.value=this.value" />
+                    </div>
                 </div>
                 <div class="form-group col-sm-6">
                     <label for="tank-volume">Količina natočenega goriva:</label>
-                    <!-- TODO display values of range -->
-                    <input class="form-control" type="range" id="tank-volume" min="30" max="150" step="1" />
+                    <div class="range">
+                        <output id="tvOutput">60</output>
+                        <input class="form-control" type="range" id="tank-volume" min="30" max="120" step="1" value="60" oninput="tvOutput.value=this.value" />
+                    </div>
                 </div>
                 <div class="form-group col-sm-6">
                     <button class="btn btn-success" onclick="submit()">Izračun</button>
@@ -73,7 +77,8 @@
         </div>
         <div id="results" class="panel" style="display:none;">
             <div class="panel-heading"></div>
-            <div class="panel-body">Za <span id="tank-volume-out" class="bold"></span> litrov goriva boš v Sloveniji plačal <span id="slo-tank-cost-out" class="bold"></span> €. Če se odpelješ v Avstrijo, lahko prihraniš do <span id="aut-savings-out" class="bold"></span> €!</div>
+            <div id="body-success" class="panel-body">Za <span id="tank-volume-out" class="bold"></span> litrov goriva boš v Sloveniji plačal <span id="slo-tank-cost-out" class="bold"></span> €. Če se odpelješ v Avstrijo, lahko kljub vožnji prihraniš do <span id="aut-savings-out" class="bold"></span> €!</div>
+            <div id="body-fail" class="panel-body">Za <span id="tank-volume-out" class="bold"></span> litrov goriva boš v Sloveniji plačal <span id="slo-tank-cost-out" class="bold"></span> €. Tankaj raje v Sloveniji, saj boš zaradi vožnje v Avstrijo izgubil vsaj <span id="aut-savings-out" class="bold"></span> €!</div>
             <table class="table">
                 <thead>
                     <tr>
