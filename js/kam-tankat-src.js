@@ -247,7 +247,12 @@ class KamTankat {
         this.findFuelStations(kamTankat3Callback);
     }
     _kamTankat3(response) {
-        this.saveFuelStations(response);
+        if (!this.saveFuelStations(response)) {
+            // no fuel stations found
+            alert("Nisem našel bencinskih črpalk v bližini!");
+            this.reset();
+            return;
+        }
         this.sortFuelStations(kamTankat4Callback);
     }
     _kamTankat4() {
@@ -330,12 +335,16 @@ class KamTankat {
     saveFuelStations(fuelStationsResponse) {
         this.fuelStations = [];
         console.log(fuelStationsResponse);
+        if (fuelStationsResponse.length === 1 && fuelStationsResponse[0].spritPrice.length === 0) {
+            return false;
+        }
         for (var fs of fuelStationsResponse) {
             if (fs.spritPrice[0].amount !== "") {
                 this.fuelStations.push(new FuelStation(fs));
             }
         }
         console.log(this.fuelStations);
+        return true;
     }
 
     displayFuelStationMarkers() {
@@ -440,7 +449,7 @@ class View {
     }
 
     reset() {
-        //TODO
+        this.overlay.fadeOut();
         this.resultsPanel.slideUp();
         this.resultsTable.empty();
         this.resultsPanel.removeClass('panel-danger');
