@@ -598,19 +598,7 @@ var KamTankat = (function () {
     }, {
         key: "displayRouteToBestFuelStation",
         value: function displayRouteToBestFuelStation() {
-            var request = {
-                origin: this.startPlace.geometry.location,
-                destination: this.fuelStations[0].location,
-                travelMode: google.maps.TravelMode.DRIVING
-            };
-
-            this.directionsService.route(request, function (response, status) {
-                if (status == google.maps.DirectionsStatus.OK) {
-                    kamTankat.directionsDisplay.setDirections(response);
-                } else {
-                    console.log(status);
-                }
-            });
+            this.directionsDisplay.setDirections(this.fuelStations[0].directions);
         }
     }]);
 
