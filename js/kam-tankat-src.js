@@ -1,5 +1,5 @@
-var FUEL_PRICE_AUT_URL = "http://107.161.149.156/aut-price.php";
-var FUEL_PRICE_SLO_URL = "http://107.161.149.156/slo-price.php";
+var FUEL_PRICE_AUT_URL = "http://kam-tankat.net46.net/aut-price.php";
+var FUEL_PRICE_SLO_URL = "http://kam-tankat.net46.net/slo-price.php";
 
 var kamTankat, view;
 
@@ -24,7 +24,8 @@ class Util {
         var request = Util.createXMLHttpRequest();
         request.onreadystatechange = function() {
             if (request.readyState == 4 && request.status == 200) {
-                callback(JSON.parse(request.responseText));
+                var response = Util.removeHostingAnalytics(request.responseText);
+                callback(JSON.parse(response));
             }
             else if (request.readyState == 4) {
                 console.log(request.responseText);
@@ -41,8 +42,7 @@ class Util {
     }
     
     static createAUTQueryString(location, radius, fuel) {
-        var checked = '"checked"';
-        var fuel = '"' + fuel + '"';
+        var checked = 'checked';
         var circleBounds = new google.maps.Circle({center: location, radius: radius}).getBounds();
         var northEast = circleBounds.getNorthEast();
         var southWest = circleBounds.getSouthWest();
@@ -86,6 +86,15 @@ class Util {
     static round(number, decimals) {
         var t = Math.pow(10, decimals);
         return Math.round(number * t) / t;
+    }
+
+    static removeHostingAnalytics(html) {
+        var index = html.indexOf('<!-- Hosting24 Analytics Code -->');
+        var result = html;
+        if (index > 0) {
+            result = html.substring(0, index);
+        }
+        return result;
     }
 }
 
@@ -216,6 +225,7 @@ class KamTankat {
         Util.loadJSON({method:"GET", url:FUEL_PRICE_SLO_URL}, function(response) {
             kamTankat.sloFuelPrice['DIE'] = new FuelPrice(parseFloat(response.Slovenia['diesel'].normal.price), 'DIE');
             kamTankat.sloFuelPrice['SUP'] = new FuelPrice(parseFloat(response.Slovenia['95'].normal.price), 'SUP');
+            console.log(kamTankat.sloFuelPrice);
         });
     }
 

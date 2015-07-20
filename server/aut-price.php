@@ -11,12 +11,12 @@ $lat2 = (float)$_POST['lat2'];
 $lng1 = (float)$_POST['lng1'];
 $lng2 = (float)$_POST['lng2'];
 
-if (($fuel != '"DIE"' && $fuel != '"SUP"') || ($checked != '""' && $checked != '"checked"')) {
+if (($fuel != 'DIE' && $fuel != 'SUP') || ($checked != '' && $checked != 'checked')) {
 	header(':', true, 400);
 	exit("HTTP 400");
 }
 $url = 'http://www.spritpreisrechner.at/ts/GasStationServlet';
-$data = array($checked, $fuel, $lng1, $lat1, $lng2, $lat2);
+$data = array('"' . $checked . '"', '"' . $fuel . '"', $lng1, $lat1, $lng2, $lat2);
 
 $options = array(
         'http' => array(

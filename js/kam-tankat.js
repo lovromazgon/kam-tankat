@@ -8,8 +8,8 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var FUEL_PRICE_AUT_URL = "http://107.161.149.156/aut-price.php";
-var FUEL_PRICE_SLO_URL = "http://107.161.149.156/slo-price.php";
+var FUEL_PRICE_AUT_URL = "http://kam-tankat.net46.net/aut-price.php";
+var FUEL_PRICE_SLO_URL = "http://kam-tankat.net46.net/slo-price.php";
 
 var kamTankat, view;
 
@@ -42,7 +42,8 @@ var Util = (function () {
             var request = Util.createXMLHttpRequest();
             request.onreadystatechange = function () {
                 if (request.readyState == 4 && request.status == 200) {
-                    callback(JSON.parse(request.responseText));
+                    var response = Util.removeHostingAnalytics(request.responseText);
+                    callback(JSON.parse(response));
                 } else if (request.readyState == 4) {
                     console.log(request.responseText);
                     alert("Sorči, prišlo je do napake..");
@@ -80,8 +81,7 @@ var Util = (function () {
     }, {
         key: "createAUTQueryString",
         value: function createAUTQueryString(location, radius, fuel) {
-            var checked = "\"checked\"";
-            var fuel = "\"" + fuel + "\"";
+            var checked = "checked";
             var circleBounds = new google.maps.Circle({ center: location, radius: radius }).getBounds();
             var northEast = circleBounds.getNorthEast();
             var southWest = circleBounds.getSouthWest();
@@ -127,6 +127,16 @@ var Util = (function () {
         value: function round(number, decimals) {
             var t = Math.pow(10, decimals);
             return Math.round(number * t) / t;
+        }
+    }, {
+        key: "removeHostingAnalytics",
+        value: function removeHostingAnalytics(html) {
+            var index = html.indexOf("<!-- Hosting24 Analytics Code -->");
+            var result = html;
+            if (index > 0) {
+                result = html.substring(0, index);
+            }
+            return result;
         }
     }]);
 
@@ -331,6 +341,7 @@ var KamTankat = (function () {
             Util.loadJSON({ method: "GET", url: FUEL_PRICE_SLO_URL }, function (response) {
                 kamTankat.sloFuelPrice["DIE"] = new FuelPrice(parseFloat(response.Slovenia["diesel"].normal.price), "DIE");
                 kamTankat.sloFuelPrice["SUP"] = new FuelPrice(parseFloat(response.Slovenia["95"].normal.price), "SUP");
+                console.log(kamTankat.sloFuelPrice);
             });
         }
     }, {
