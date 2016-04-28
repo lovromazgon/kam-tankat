@@ -1,5 +1,5 @@
 var FUEL_PRICE_AUT_URL = "http://kam-tankat.net46.net/aut-price.php";
-var FUEL_PRICE_SLO_URL = "http://kam-tankat.net46.net/slo-price.php";
+var FUEL_PRICE_SLO_URL = "https://crossorigin.me/http://www.petrol.eu/api/fuel_prices.json";
 
 var kamTankat, view;
 
